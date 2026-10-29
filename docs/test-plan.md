@@ -5,12 +5,27 @@ What to exercise, in the order that finds problems fastest. Tick as you go; note
 
 ## 0. Access
 
-- [ ] MCP connects, and `get_capabilities` succeeds for the **invited** email.
+- [x] MCP connects, and `get_capabilities` succeeds for the **invited** email.
 - [ ] Training key created at https://app.19th.com/api-keys and saved (shown once).
 
 ## 1. First model — tumor diagnosis
 
-The smallest useful loop, and the one that proves auth + upload + fit + predict.
+### MCP route — done 2026-10-29
+
+- [x] `get_skill`, then `get_capabilities` → connection entitled
+- [x] `prep_run(template)` → declaration; `prep_run(create)` → upload slot
+- [x] Signed PUT of the exact bytes (124,839 B, digest pinned)
+- [x] `prep_run(finalize)` → `csv_receipt`, 0 issues, offered modes all four
+- [x] `submit_run` standard → succeeded in 6.1 s
+- [x] Fast/Turbo/Warpspeed returned, all delivery-ready
+- [x] Fast bundle downloaded: size and SHA-256 matched
+- [x] Bundle `predict.py` ran locally on 3 rows → 3/3 matched actual labels
+
+Details and caveats in [`alpha-findings.md`](alpha-findings.md).
+
+### REST route — not yet exercised
+
+The smallest useful loop for `fit.py`, and the one that proves auth + upload + fit + predict:
 
 - [ ] `python3 scripts/make_demo_data.py`
 - [ ] `fit.py` with `--output-kind event_probability --positive-label malignant --mode standard`

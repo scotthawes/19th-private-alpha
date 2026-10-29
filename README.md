@@ -31,6 +31,13 @@ before uploading anything:
 2. `get_capabilities` — verifies access and lists the tasks, formats and training modes
    actually enabled for your account.
 
+The MCP route is verified end to end as of 2026-10-29: a `standard` run on
+`data/breast_cancer_diagnostic.csv` returned Fast/Turbo/Warpspeed, and the Fast bundle was
+downloaded, digest-checked and run locally. See
+[`docs/alpha-findings.md`](docs/alpha-findings.md) — including seven behaviours worth
+knowing before you write client code. The REST route below is still unexercised (no API key
+yet).
+
 ## Quickstart — Training API
 
 ```sh
@@ -57,6 +64,7 @@ and points `runs/latest` at the newest run.
 19th-private-alpha/
 ├── docs/
 │   ├── alpha-notes.md        # the invite, kept as the source of truth
+│   ├── alpha-findings.md     # what actually happened, with evidence
 │   ├── test-plan.md          # what to exercise, both paths
 │   └── vendor/19th/          # official 19th docs, vendored verbatim
 ├── scripts/
