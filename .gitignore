@@ -1,0 +1,19 @@
+# Secrets — the .env.example is the only env file that belongs in git
+.env
+.env.*
+!.env.example
+
+# Per-run API artifacts (request.json, fit.json, model files)
+runs/
+
+# Downloaded model bundles
+*.tfpb
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# macOS
+.DS_Store
