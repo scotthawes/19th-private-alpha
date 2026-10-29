@@ -50,11 +50,12 @@ cheap:
 
 ## 3. Training modes
 
-- [x] `standard` and `high` on the same split — 6.1 s vs 12.0 s, identical confusion matrix
-- [ ] `instant` on the same dataset — compare against the above
-- [ ] `ultra` on one dataset — docs claim 2–3× the time of `high`; verify
-- [ ] Same dataset with `--model-variant turbo` / `warpspeed` if the account offers them
-      (Warpspeed on `high` scored identically to Fast — see findings)
+- [x] All four modes on the same split — build 4.1 / 6.1 / 12.0 / 22.0 s
+- [x] Confusion matrix identical at every mode (41/2/69/1); only calibration improves
+- [x] `ultra` took 1.83× `high` (docs claimed 2–3×)
+- [ ] `instant` vs `standard` on a harder dataset where AUC can actually move
+- [ ] `--model-variant turbo` / `warpspeed` scored on holdout (Warpspeed on `high` was
+      identical to Fast — see findings)
 
 ### Holdout scoring — done 2026-10-29
 

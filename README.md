@@ -96,8 +96,9 @@ python3 scripts/split_data.py data/breast_cancer_diagnostic.csv --target diagnos
 python3 scripts/score.py data/holdout.csv predictions.json --target diagnosis --positive malignant
 ```
 
-Baseline measured 2026-10-29: **0.9735 accuracy, 0.9987 AUC** on 113 held-out rows — with
-`standard` and `high` producing identical confusion matrices. See
+Baseline measured 2026-10-29: **0.9735 accuracy, ~0.9985 AUC** on 113 held-out rows, with an
+identical confusion matrix across `instant`, `standard`, `high` and `ultra`. Training mode
+moved calibration only, never classification. See
 [`docs/alpha-findings.md`](docs/alpha-findings.md).
 
 Useful `fit.py` flags: `--mode instant|standard|high|ultra`, `--output-kind` (any of the eight
