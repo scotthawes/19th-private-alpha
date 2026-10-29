@@ -50,9 +50,18 @@ cheap:
 
 ## 3. Training modes
 
-- [ ] `instant`, `standard`, `high` on the same dataset — compare wall-clock and quality
+- [x] `standard` and `high` on the same split — 6.1 s vs 12.0 s, identical confusion matrix
+- [ ] `instant` on the same dataset — compare against the above
 - [ ] `ultra` on one dataset — docs claim 2–3× the time of `high`; verify
 - [ ] Same dataset with `--model-variant turbo` / `warpspeed` if the account offers them
+      (Warpspeed on `high` scored identically to Fast — see findings)
+
+### Holdout scoring — done 2026-10-29
+
+- [x] Deterministic stratified split (`scripts/split_data.py`, seed 42)
+- [x] Train on 456 rows, score on 113 unseen rows (`scripts/score.py`)
+- [x] Baseline: 0.9735 accuracy, 0.9987 AUC, 1 false negative in 42 malignancies
+- [ ] Repeat on a harder dataset where modes can actually be separated
 
 ## 4. Behaviour under interruption
 

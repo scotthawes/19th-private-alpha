@@ -9,6 +9,13 @@ runs/
 # Downloaded model bundles
 *.tfpb
 
+# Derived evaluation artifacts (rebuilt from the committed CSV + seed)
+data/train.csv
+data/holdout.csv
+data/holdout-rows.json
+data/predictions*.json
+data/metrics*.json
+
 # Python
 __pycache__/
 *.py[cod]

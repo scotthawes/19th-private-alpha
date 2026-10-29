@@ -81,8 +81,24 @@ and points `runs/latest` at the newest run.
 | Script | Does |
 | --- | --- |
 | `make_demo_data.py` | Writes `data/breast_cancer_diagnostic.csv` (reconstruction — see `data/README.md`) and prints the provenance. |
+| `split_data.py` | Deterministic stratified train/holdout split (seed 42) plus input-only records for scoring. |
+| `score.py` | Accuracy, ROC AUC, precision/recall/F1, log loss, Brier, confusion matrix and calibration against held-out labels. |
 | `fit.py` | `POST /v1/fit`, polls `status_url` on 202, verifies and saves the model on request. |
 | `predict.py` | Calls the model's `prediction.url` from `fit.json`. |
+
+### Evaluating a model
+
+19th returns no accuracy metric, so a holdout score is the only way to judge a model:
+
+```sh
+python3 scripts/split_data.py data/breast_cancer_diagnostic.csv --target diagnosis --force
+# train on data/train.csv, then run the bundle's predict.py over data/holdout-rows.json
+python3 scripts/score.py data/holdout.csv predictions.json --target diagnosis --positive malignant
+```
+
+Baseline measured 2026-10-29: **0.9735 accuracy, 0.9987 AUC** on 113 held-out rows — with
+`standard` and `high` producing identical confusion matrices. See
+[`docs/alpha-findings.md`](docs/alpha-findings.md).
 
 Useful `fit.py` flags: `--mode instant|standard|high|ultra`, `--output-kind` (any of the eight
 in `docs/vendor/19th/training.md`), `--predict-sample N`, `--key` to pin an idempotency key,

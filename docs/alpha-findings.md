@@ -50,6 +50,62 @@ Downloaded the Fast bundle and checked it rather than trusting the handoff:
 
 ---
 
+## 2026-10-29 — held-out evaluation: `standard` vs `high`
+
+Training on 456 rows, scoring on **113 rows never shown to the model**. Split is
+`scripts/split_data.py`, seed 42, stratified (`data/train.csv` / `data/holdout.csv`).
+Scoring is `scripts/score.py`; bundles verified by SHA-256 before use.
+
+| Model | Mode | Build | Accuracy | ROC AUC | Log loss | Brier | TP/FP/TN/FN |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| Fast | `standard` | 6.1 s | 0.9735 | 0.9987 | 0.0648 | 0.0173 | 41/2/69/1 |
+| Fast | `high` | 12.0 s | 0.9735 | 0.9983 | 0.0588 | 0.0160 | 41/2/69/1 |
+| Warpspeed | `high` | 12.0 s | 0.9735 | 0.9987 | 0.0631 | 0.0173 | 41/2/69/1 |
+
+Runs `01a1854d-ec55-7986-aa4e-3a11b0e0fb6b` (standard) and
+`01a1854d-ef3e-75a7-8b89-3fff2bfab9e9` (high), one shared preparation.
+
+### The model is genuinely good
+
+97.35% accuracy, 0.9987 AUC, 1 false negative in 42 malignancies. So the 0.985
+probabilities from the first run were meaningful — 19th produces a usable model on this
+data. That question is now settled rather than assumed.
+
+### Escalating the mode bought nothing measurable
+
+`standard` → `high` doubled build time (6.1 s → 12.0 s) and changed **no hard prediction
+at all**: identical confusion matrix, identical accuracy, identical precision/recall/F1.
+AUC moved from 0.9987 to 0.9983 — noise, and slightly in the wrong direction. Log loss
+improved (0.0648 → 0.0588), so `high` is mildly better calibrated even where it classifies
+identically.
+
+The models are genuinely different, not the same file twice: 0/113 rows were bit-identical
+between them, with a mean probability difference of 0.0076 and a max of 0.077.
+
+### The `quality.difference_points` metric did not predict holdout behaviour
+
+Warpspeed on `high` was reported at **−0.1077 points** versus Fast. On 113 held-out rows it
+produced the same confusion matrix, the same accuracy, the same precision/recall/F1, and a
+nominally *equal* AUC (0.9987 vs 0.9987); its log loss was actually better than standard
+Fast's (0.0631 vs 0.0648). Whatever that penalty measures, it did not surface as worse
+classification on this data.
+
+### `high` warned; `standard` did not
+
+The `high` run returned: *"Additional training limitation recorded; review the data and
+model suitability before relying on predictions."* The `standard` run on identical bytes
+returned no warnings. There is no way to read what the limitation actually was — the field
+is prose with no code or detail.
+
+### Caveat on statistical power
+
+113 holdout rows means one flipped prediction moves accuracy by 0.9 points, and WDBC is a
+famously separable dataset. Identical confusion matrices are consistent with near-equivalence
+between modes, but this test is not powerful enough to prove equivalence. A harder dataset
+with more rows would be needed to separate 0.9987 from 0.9983 meaningfully.
+
+---
+
 ## Findings
 
 ### 1. A single target comes back as `target_columns`
@@ -88,6 +144,34 @@ absolute score. There is no accuracy, precision, recall, AUC or confusion matrix
 there is no way to compare `standard` against `high` without exporting models and scoring
 them yourself. **Biggest gap found in this session.**
 
+Workaround now in this repo: `scripts/split_data.py` + `scripts/score.py`. Measured baseline
+on held-out data: 0.9735 accuracy, 0.9987 AUC. See the evaluation section above.
+
+### 8. `quality.difference_points` is not a predictor of held-out performance
+
+Warpspeed was scored −0.1077 points against Fast and then classified all 113 holdout rows
+identically, with equal AUC. Treat the number as a relative hint, not a quality guarantee,
+and score the exported bundle before choosing a variant.
+
+### 9. Mode escalation may cost build time for no accuracy gain
+
+`standard` → `high` doubled build time and left the confusion matrix untouched on this
+dataset. Worth defaulting to `standard` and only paying for `high`/`ultra` when a scored
+holdout says it helps.
+
+### 10. Prediction-time and size metadata look like constants, not measurements
+
+Across two separate runs in two modes, the reported `row_ms` (0.01854 / 0.00968 / 0.00292)
+and tfpb sizes (377,408 / 193,536 / 52,992 B) were identical to five decimal places. The
+field is labelled `basis: "reference_cpu_estimate"`, so it is honest about being an estimate
+— but it does not vary with mode or data, so it cannot be used to compare runs.
+
+### 11. Training-limitation warnings are opaque
+
+`high` returned *"Additional training limitation recorded; review the data and model
+suitability before relying on predictions."* on identical bytes that produced no warning at
+`standard`. No code, no field, no explanation — nothing actionable.
+
 ### 6. Download links expire in ~5 minutes
 
 Every download URL carried `X-Goog-Expires=299`. A link handed to a user and opened a few
@@ -111,3 +195,8 @@ used the bundle's own `predict.py`, not a standalone SDK.
    routes?
 4. Is the labelling workflow reachable at all for a private-alpha CSV user, or only via
    the legacy capability?
+5. What does `quality.difference_points` actually measure? Warpspeed at −0.1077 classified
+   every holdout row identically to Fast at 0 points.
+6. What is the "additional training limitation" that `high` warns about, and why does
+   `standard` on identical bytes not report it?
+7. Why is reported prediction time identical across modes and datasets?
