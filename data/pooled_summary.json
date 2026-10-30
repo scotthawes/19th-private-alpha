@@ -1,0 +1,50 @@
+{
+  "3": {
+    "rows": 300,
+    "triangles": 50,
+    "sha256": "39d2f4a3f3e632f1ea8e5ab2c9e5302d239d54e4a58ab2ee77ce9273846bff4f",
+    "target_min": 0.7779302909658774,
+    "target_max": 1.4509893485224679,
+    "target_mean": 1.005723643964952
+  },
+  "4": {
+    "rows": 500,
+    "triangles": 50,
+    "sha256": "636424b9d957a8da9c73f0494092ffc4c2f25b4c37a574b440ac98853a36e860",
+    "target_min": 0.7100418841605692,
+    "target_max": 1.5093606902549117,
+    "target_mean": 1.0054931358768198
+  },
+  "5": {
+    "rows": 750,
+    "triangles": 50,
+    "sha256": "49cb85f40ea4ba3f46e93c2661305e024763a29046d5bbe0d733ba644259593b",
+    "target_min": 0.6938939123622809,
+    "target_max": 1.5487332961076068,
+    "target_mean": 1.0054057498086366
+  },
+  "6": {
+    "rows": 1050,
+    "triangles": 50,
+    "sha256": "bcdfccb1745be7bf33a05b63bf8ffb781679289a61364fffc0480fedc81bbc10",
+    "target_min": 0.7041158700094889,
+    "target_max": 1.59761591255906,
+    "target_mean": 1.004936668379938
+  },
+  "7": {
+    "rows": 1400,
+    "triangles": 50,
+    "sha256": "ee37d9c6bb5f0b41c30f786724ec9ee3a4033d8a861a6ccea7d03ab079aae614",
+    "target_min": 0.7009489843855962,
+    "target_max": 1.6025778883689898,
+    "target_mean": 1.0042836465531724
+  },
+  "8": {
+    "rows": 1800,
+    "triangles": 50,
+    "sha256": "8432b67d3708d549511b812463258f455f9c7cda7a4ad9228b09c5190fa3f9f4",
+    "target_min": 0.6979111733625751,
+    "target_max": 1.5974156401920383,
+    "target_mean": 1.0038780688483042
+  }
+}

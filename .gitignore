@@ -16,6 +16,9 @@ data/holdout-rows.json
 data/predictions*.json
 data/metrics*.json
 
+# Derived pooled tables (rebuilt from the population + script; digests in pooled_summary.json)
+data/pooled_anchor*.csv
+
 # Python
 __pycache__/
 *.py[cod]
