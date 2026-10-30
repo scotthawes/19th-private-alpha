@@ -12,9 +12,7 @@ present alongside the inputs.
 | `synthetic_triangle_full.csv` | The same triangle with the unobserved corner. **Scoring only — never train on it.** |
 | `synthetic_triangle_params.json` | Seed, development factors, exposure curve, and the SHA-256 of both CSVs. |
 
-## The synthetic triangle
-
-Built because the CAS corpus cannot be uploaded to a third party. It is deterministic: run
+## The synthetic triangleBuilt because the CAS corpus cannot be uploaded to a third party. It is deterministic: run
 `python3 scripts/make_triangle.py` again and both CSVs are byte-identical, which
 `synthetic_triangle_params.json` lets you check.
 
@@ -43,6 +41,25 @@ downloaded by the invited account. Save them here with these names:
 If you drop the official `breast_cancer_diagnostic.csv` here, it replaces the
 reconstruction and everything else keeps working — regenerate with
 `python3 scripts/make_demo_data.py --force` if you ever want the local copy back.
+
+## The synthetic population
+
+`scripts/make_triangle_population.py` generates **50 triangles** for the pooled arm (decision
+in issue #10). Every triangle uses the same exposure base and trend; only the seed varies.
+
+| File | Detail |
+| --- | --- |
+| `synthetic_population_observed.csv` | 2,750 rows — 50 × 55, `triangle_id` first |
+| `synthetic_population_full.csv` | 5,000 rows — includes the unknown corners. **Scoring only** |
+| `synthetic_population_params.json` | seeds `20261030…20261079`, digests, rows per anchor |
+
+Pooled rows available per anchor: k=3 → 300, k=5 → 750, k=8 → 1,800.
+
+**Why identical exposure matters.** `latest_cum` and `log_latest_cum` carry absolute scale.
+If exposure varied across the population, the model could learn level-dependent corrections
+and a depth effect could be mistaken for a level effect. Measured: per-triangle ultimate has
+a coefficient of variation of 0.038 and no trend across ids, so what varies between triangles
+is noise, not scale.
 
 ## Before you train on anything real
 
