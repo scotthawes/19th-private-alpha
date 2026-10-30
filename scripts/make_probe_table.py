@@ -133,6 +133,14 @@ def main() -> None:
     parser.add_argument("triangle", type=pathlib.Path, help="observed triangle CSV")
     parser.add_argument("--anchor", type=int, required=True, help="valuation diagonal index k")
     parser.add_argument("--out", type=pathlib.Path, required=True)
+    parser.add_argument(
+        "--string-identifiers",
+        action="store_true",
+        help=(
+            "write origin/dev/cal indices as text labels ('o3', 'd1', 'cal4') instead of integers, "
+            "to see whether the trainer then infers them as categorical rather than numeric"
+        ),
+    )
     args = parser.parse_args()
 
     matrix, n = load(args.triangle)
@@ -142,6 +150,12 @@ def main() -> None:
     rows = build(matrix, n, args.anchor)
     if not rows:
         raise SystemExit("no rows built — check the anchor")
+
+    if args.string_identifiers:
+        prefixes = {"origin_idx": "o", "dev_idx": "d", "cal_idx": "cal"}
+        for row in rows:
+            for column, prefix in prefixes.items():
+                row[column] = f"{prefix}{row[column]}"
 
     args.out.parent.mkdir(parents=True, exist_ok=True)
     with args.out.open("w", newline="") as handle:
