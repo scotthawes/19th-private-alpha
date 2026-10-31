@@ -136,6 +136,45 @@ would test both claims properly.
 
 ---
 
+## 2026-10-30 — the reserving arm, and what the model file gives away
+
+19th was tested against a real actuarial problem: fill the unknown corner of a loss triangle. The full record
+lives in the wayfinder map (`#1` and its children); this section keeps only what is about 19th as a product.
+
+**Headline:** 19th can model a loss triangle, and on matched cells it reproduces the same depth-dependent bias
+as TabPFN — slope `+0.0493` (se `0.0018`) against the control's `+0.0478` (se `0.0016`), difference `+0.0015`,
+`z = +0.62`. The bias is not a property of the model class, and 19th offers no modelling edge here.
+
+Two representation limits showed up that no amount of fitting repairs:
+
+- **A column cannot be declared categorical.** `prep_run` offers `column_types` only for embeddings and infers
+  everything else physically. Integer identifiers are read as `numeric`; the same values written as text
+  (`"d1"`) are read as `categorical`. So the typing is carried by the serialisation, not by the schema, and must
+  be maintained on every prediction row as well as every fit.
+- **A constant column is dropped without a warning in the run output.** `global_factor_available` was excluded —
+  *"one value only in the labelled rows"* — so the model trains on 7 inputs where the arm has 8, and the flag that
+  literally encodes "this factor was unobservable / I am extrapolating" is gone.
+
+## 2026-10-31 — model internals are readable
+
+The bundle is Apache-2.0 source plus a plain `.npz`. In the arm's `fast` model:
+
+- **144 arrays.** `hidden0.weight` (256, 44), `hidden1.weight` (256, 256), `hidden2.kron_a` / `kron_b` (1, 16, 16),
+  a spline/knots quantile head, and per-column category embeddings.
+- **A compact 256-wide MLP** with Kronecker-factorised layers and a spline output head — `LAYER_KINDS = ("dense",
+  "kron")`, `PBLD` piecewise-linear number encoding. Not a foundation model.
+- **An explicit unseen-category bucket** per categorical column: `unseen = len(spec["vocab"]) + 1`
+  (`runtime/tfp/predict.py:340`), assigned to any value absent from the vocabulary.
+
+That last line explains a result that otherwise looks mysterious: at anchor 3 every one of the 1,200 prediction
+rows carried an unseen development category (`unseen_category_counts: {dev_idx: 900, cal_idx: 1200}`), because
+the training rows only contain `dev_idx` 1..3. Depth is encoded in a categorical column, so depth extrapolation
+happens **through that unseen bucket**, not through any learned depth response.
+
+You can inspect and port the model; you cannot retrain it, and the `.tfpb` writer is not shipped.
+
+---
+
 ## Findings
 
 ### 1. A single target comes back as `target_columns`
@@ -220,6 +259,42 @@ and model suitability before relying on predictions."* on identical bytes that p
 warning at `instant` or `standard`. No code, no field, no explanation — nothing actionable,
 and it appears precisely on the modes sold as more accurate.
 
+### 12. Concurrent upload slots are capped, and the message reads like a hard failure
+
+Creating several preparations at once is refused:
+
+```
+CONFLICT: the requested operation conflicts with current resource state
+(reason=UPLOAD_SLOT_QUOTA)
+```
+
+The reason is named but the limit is not, and `retryable: false` reads permanent. It is not:
+draining the create-upload-finalize cycle one at a time works, and replaying a refused create
+with the **same idempotency key** recovers the existing preparation instead of allocating
+another. Any multi-fit campaign must serialise the cycle.
+
+### 13. A constant column is dropped silently
+
+`global_factor_available` was excluded from training with *"one value only in the labelled
+rows"*, reported in `excluded_inputs` rather than as a warning. In a designed feature set this
+removes signal without an alarm, and the model's input count becomes 7 where the caller
+declared 8.
+
+### 14. Column typing is carried by the serialisation, not the schema
+
+No request field declares a column categorical. Integer identifiers are typed `numeric`; the
+same values written as text are typed `categorical`. A schema-level decision has to be
+smuggled through the data format, and the same typing must be reproduced on every prediction
+row or the model sees a numeric feature it never trained on.
+
+### 15. Depth extrapolation runs through an unseen-category bucket
+
+With categorical identifiers, every prediction row carried a development level absent from
+the fit rows (`unseen_category_counts: {dev_idx: 900, cal_idx: 1200}` of 1,200). The runtime
+assigns those to a dedicated bucket, `unseen = len(spec["vocab"]) + 1`. Depth-dependent
+behaviour therefore comes from the model's response to an unknown category, not from any
+learned depth response — worth knowing before reading anything into a depth-based metric.
+
 ---
 
 ## Open questions for 19th
@@ -239,3 +314,10 @@ and it appears precisely on the modes sold as more accurate.
    the data?
 8. Should the docs say plainly that training mode moves calibration but not classification?
    The mode descriptions promise accuracy differences this test did not find.
+9. Is there any way to declare a column categorical, or is text encoding the intended path?
+   If text encoding is intended, it should be documented as the contract.
+10. Should `excluded_inputs` raise a warning rather than an informational field? A dropped
+    designed feature is a correctness event, not a note.
+11. What is the intended limit on concurrent upload slots, and can the error say so?
+12. Is the unseen-category bucket intended to carry extrapolation, or is depth-as-a-category
+    a representation the team expects callers to avoid?
