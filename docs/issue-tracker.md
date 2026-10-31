@@ -35,6 +35,11 @@ Sub-issues and blocking relationships have **no** `gh` subcommand (`gh` 2.101); 
   `gh api repos/scotthawes/19th-private-alpha/issues/N/sub_issues`
 - Resolve the database id of any issue: `gh issue view N -R scotthawes/19th-private-alpha --json id -q .id` (a large
   number, NOT the issue #N). All write calls below take this database id.
+  - **Verified failure in this repo (2026-10-30):** that command returns a GraphQL node ID (`I_kwDOVbM1rc8AAAABaw4oLQ`),
+    not an integer. The sub-issue and dependency endpoints reject it with
+    `HTTP 422: Invalid property /sub_issue_id: ... is not of type integer`. Use
+    `gh api repos/scotthawes/19th-private-alpha/issues/N --jq .id` instead — it returns the numeric database id
+    (e.g. `6091056838`).
 - Add a sub-issue:
   `gh api repos/scotthawes/19th-private-alpha/issues/N/sub_issues -X POST -F sub_issue_id=<child-db-id>`
 - List what blocks #N: `gh api repos/scotthawes/19th-private-alpha/issues/N/dependencies/blocked_by`
