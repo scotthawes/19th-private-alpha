@@ -70,6 +70,9 @@ against a large library, and no service dependency at inference.
 We have a **deterministic synthetic loss-triangle generator** — 10×10, realistic development factors, verified
 recoverable to within ~1% — with no licence encumbrance, committed alongside the data it produces.
 
+It is public and self-verifying: **https://github.com/scotthawes/synthetic-loss-triangle** — clone it and
+`python3 scripts/verify.py` checks the digests, reproduces the data byte-for-byte, and recovers the factors.
+
 Your four demo datasets are tumour, exoplanet, support tickets and machine failure. **None is actuarial.** We would
 be glad to contribute this one as a claims-triangle demo, together with the ratio-over-Chain-Ladder framing above,
 if it is useful to you.
