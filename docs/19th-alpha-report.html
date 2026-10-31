@@ -1,0 +1,150 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>19th alpha — feedback from a loss-reserving use case</title>
+<style>
+  :root { --ink:#1b1b1f; --muted:#5b5b66; --rule:#d8d8e0; --accent:#2f4f7f; --code-bg:#f4f4f7; }
+  * { box-sizing: border-box; }
+  body { margin:0; padding:3.5rem 1.5rem 5rem; background:#fff; color:var(--ink);
+         font:16px/1.65 -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; }
+  main { max-width:44rem; margin:0 auto; }
+  h1 { font-size:1.85rem; line-height:1.2; letter-spacing:-.01em; margin:0 0 .35rem; font-weight:650; }
+  h1 + p { color:var(--muted); margin-top:0; }
+  h2 { font-size:1.18rem; font-weight:640; margin:2.6rem 0 .75rem; padding-bottom:.35rem; border-bottom:1px solid var(--rule); }
+  p { margin:.85rem 0; }
+  strong { font-weight:640; }
+  a { color:var(--accent); }
+  ul, ol { padding-left:1.35rem; margin:.85rem 0; }
+  li { margin:.3rem 0; }
+  code { font:.87em/1.4 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+         background:var(--code-bg); padding:.12em .35em; border-radius:3px; }
+  pre { background:var(--code-bg); padding:.85rem 1rem; border-radius:5px; overflow-x:auto; border:1px solid var(--rule); }
+  pre code { background:none; padding:0; font-size:.84em; }
+  table { border-collapse:collapse; width:100%; margin:1.1rem 0; font-size:.925rem; line-height:1.5; }
+  th, td { text-align:left; padding:.55rem .7rem; border-bottom:1px solid var(--rule); vertical-align:top; }
+  th { font-weight:620; color:var(--muted); font-size:.82rem; text-transform:uppercase; letter-spacing:.04em; }
+  tbody tr:nth-child(even) { background:#fafafb; }
+  @media print {
+    body { padding:0; font-size:10.5pt; }
+    main { max-width:none; }
+    h1 { font-size:17pt; }
+    h2 { font-size:12pt; margin-top:1.4rem; break-after:avoid; }
+    table, pre, tr, img { break-inside:avoid; }
+    a { color:var(--ink); text-decoration:none; }
+    a[href^="http"]::after { content:" (" attr(href) ")"; font-size:8.5pt; color:var(--muted); }
+  }
+</style>
+</head>
+<body>
+<main>
+<h1>19th alpha — feedback from a loss-reserving use case</h1>
+<p>Written for the 19th team. Our own working notes are longer and more methodological; this page is what we think
+you can act on.</p>
+<h2>What we tested</h2>
+<p>We predicted <strong>link ratios</strong> on loss triangles — the ratio of one development period's cumulative paid losses to
+the period before. That is the object classical reserving methods (Chain Ladder, Mack) are built from.</p>
+<p>The framing that worked: predict the ratio <strong>divided by Chain Ladder's own volume-weighted factor</strong> for that step.
+Then <strong>1.0 reproduces Chain Ladder exactly</strong>, and the model learns a correction to a number an actuary already
+trusts. This is a much better entry point for a reserving demo than predicting losses directly.</p>
+<p>Data: 50 synthetic triangles, 10 origins by 10 development periods, pooled by anchor into 300–1,800 row tables.
+We used synthetic data deliberately — real triangle corpora usually carry licence terms that prohibit upload.</p>
+<h2>What worked well</h2>
+<ul>
+<li><strong>It modelled the problem.</strong> 300 pooled rows, trained in seconds, all four modes offered.</li>
+<li><strong>The export is genuinely good.</strong> 4.2 MB bundle, numpy-only, Apache-2.0, no runtime dependency on 19th. It scored
+  1,200 held-out rows in about <strong>one second</strong>. That is the strongest thing about the product for our use case.</li>
+<li><strong>Text identifiers are inferred as categorical.</strong> Sending <code>"d1"</code> rather than <code>1</code> is read correctly.</li>
+</ul>
+<h2>One structural thing worth knowing</h2>
+<p><strong>Depth ends up encoded in a categorical column.</strong> With <code>dev_idx</code> categorical, at anchor 3 every one of our 1,200
+prediction rows carried a development level absent from the training rows:</p>
+<pre><code>unseen_category_counts: { origin_idx: 300, dev_idx: 900, cal_idx: 1200 }
+</code></pre>
+<p>Training rows only span <code>dev_idx</code> 1..3, so depth extrapolation happens entirely through the model's
+<strong>unseen-category bucket</strong> (<code>unseen = len(spec["vocab"]) + 1</code>). That is not a reserving quirk: it applies to any
+panel or time-series table where "how far ahead am I" is a categorical input. If you have a view on how the unseen
+bucket should behave for that case, we would like to hear it.</p>
+<h2>Findings, ranked by what we think you would act on</h2>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>Finding</th>
+<th>Detail</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td><strong>No accuracy metric is returned</strong></td>
+<td><code>get_results</code> gives relative <code>quality.difference_points</code> and nothing absolute. Users must export the model and score it themselves to know if it is any good.</td>
+</tr>
+<tr>
+<td>2</td>
+<td><strong><code>quality.difference_points</code> did not track held-out performance</strong></td>
+<td>Warpspeed was scored <strong>−0.1077 points</strong> against Fast and then classified <strong>every one of 113 held-out rows identically</strong>, with equal AUC. Whatever the number measures, it did not surface as worse classification.</td>
+</tr>
+<tr>
+<td>3</td>
+<td><strong>Constant columns are dropped silently</strong></td>
+<td><code>global_factor_available</code> was excluded with <em>"one value only in the labelled rows"</em>, reported in <code>excluded_inputs</code> rather than as a warning. A designed feature disappeared and the model trained on 7 inputs where we declared 8.</td>
+</tr>
+<tr>
+<td>4</td>
+<td><strong>A column cannot be declared categorical</strong></td>
+<td><code>column_types</code> is embeddings-only; everything else is inferred physically. Integer identifiers read as <code>numeric</code>, the same values as text read as <code>categorical</code>. The typing is carried by the serialisation and must be reproduced on every prediction row.</td>
+</tr>
+<tr>
+<td>5</td>
+<td><strong><code>UPLOAD_SLOT_QUOTA</code> reports <code>retryable: false</code></strong></td>
+<td>It reads as a permanent failure and it is not — draining the create/upload/finalize cycle one at a time works. The limit is never named. Replaying with the same idempotency key recovers the existing preparation, which is good, but we only found that by trying.</td>
+</tr>
+<tr>
+<td>6</td>
+<td><strong>Training mode moved calibration, not classification</strong></td>
+<td><code>instant</code> → <code>standard</code> → <code>high</code> → <code>ultra</code> gave an identical confusion matrix at every level on our data (4.1 s → 22.0 s build). Log loss improved monotonically (0.0770 → 0.0648 → 0.0588 → 0.0551) with the gain halving each step. The mode descriptions promise accuracy differences.</td>
+</tr>
+</tbody>
+</table>
+<p>Smaller ones: download links expire in about five minutes (<code>X-Goog-Expires=299</code>), which is easy to trip over when
+scripting; <code>integer_tfpb</code> is listed as an export format but every model reports <code>EXPORT_UNAVAILABLE</code>; and the
+"additional training limitation" warning fires on <code>high</code> and <code>ultra</code> with no code or detail.</p>
+<h2>The honest benchmark</h2>
+<p>We ran a matched TabPFN control on the same 1,200 cells, same seven columns, same transform:</p>
+<table>
+<thead>
+<tr>
+<th></th>
+<th>Slope of log error against depth</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>19th</td>
+<td>+0.0493 (se 0.0018)</td>
+</tr>
+<tr>
+<td>TabPFN control</td>
+<td>+0.0478 (se 0.0016)</td>
+</tr>
+<tr>
+<td>Difference</td>
+<td>+0.0015 (z = +0.62)</td>
+</tr>
+</tbody>
+</table>
+<p>No modelling edge either way on this problem. <strong>That is not the interesting comparison for your product</strong> — the
+difference we did measure was deployment: one second versus minutes for 1,200 rows, a 4 MB portable artifact
+against a large library, and no service dependency at inference.</p>
+<h2>An offer</h2>
+<p>We have a <strong>deterministic synthetic loss-triangle generator</strong> — 10×10, realistic development factors, verified
+recoverable to within ~1% — with no licence encumbrance, committed alongside the data it produces.</p>
+<p>It is public and self-verifying: <strong><a href="https://github.com/scotthawes/synthetic-loss-triangle">https://github.com/scotthawes/synthetic-loss-triangle</a></strong> — clone it and
+<code>python3 scripts/verify.py</code> checks the digests, reproduces the data byte-for-byte, and recovers the factors.</p>
+<p>Your four demo datasets are tumour, exoplanet, support tickets and machine failure. <strong>None is actuarial.</strong> We would
+be glad to contribute this one as a claims-triangle demo, together with the ratio-over-Chain-Ladder framing above,
+if it is useful to you.</p></main>
+</body>
+</html>
