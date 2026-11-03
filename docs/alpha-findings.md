@@ -175,6 +175,25 @@ You can inspect and port the model; you cannot retrain it, and the `.tfpb` write
 
 ---
 
+## 2026-11-03 — results endpoint unavailable
+
+`get_results` failed with `UPSTREAM_ERROR` (*apiserver request failed*, `retryable: true`) on
+every attempt in this session: more than fifteen calls across four run ids
+(`01a1854d-ec55…`, `01a1854f-fbd4…`, `01a18547-020c…`, `01a18f08-b649…`), a fresh correlation id
+each time (`37f131cffe88fedddbc90b67`, `c3a7eea42cdb1430ed3ebf89`, `4a996c1ddff95c6539ee3ef2`).
+
+`list_runs` still returned all eight runs as `succeeded`, and `get_skill`, `get_capabilities`,
+`get_runtimes`, `get_download_options`, `list_skills` and `prep_run(action="template")` all
+responded normally. So the runs were healthy and the outage was specific to the results read path,
+not to the account or the connection.
+
+It blocked more than it looked: no bundle could be re-downloaded to re-verify its contents, which
+is why [`research/fit-record.md`](../research/fit-record.md) §3.2 rests on the alpha's 2026-10-29
+record rather than a fresh check. Recoverable by retrying, but there is no fallback — see
+finding 16.
+
+---
+
 ## Findings
 
 ### 1. A single target comes back as `target_columns`
@@ -294,6 +313,20 @@ the fit rows (`unseen_category_counts: {dev_idx: 900, cal_idx: 1200}` of 1,200).
 assigns those to a dedicated bucket, `unseen = len(spec["vocab"]) + 1`. Depth-dependent
 behaviour therefore comes from the model's response to an unknown category, not from any
 learned depth response — worth knowing before reading anything into a depth-based metric.
+
+### 16. The download path sits behind `get_results`, with no fallback
+
+`get_model` and `request_download` both take a `model_id` handle, and the only tool that returns
+one is `get_results`. So while the results read path is down, **nothing can be downloaded at
+all** — not a bundle, not an option list, not a renewal of an expired link. `list_runs` keeps
+reporting the runs as `succeeded`, which makes the failure look like a dead run rather than an
+unreachable endpoint.
+
+There is no independent route: no "list my models" call, no model id derivable from the run id.
+Scripting around it means retrying `get_results` until it recovers, so any campaign that
+downloads bundles should treat a results outage as a hard stop with retries, not as a per-run
+failure to be worked around by starting another run — starting another run would allocate an
+upload slot (finding 12) and still end at the same endpoint.
 
 ---
 
